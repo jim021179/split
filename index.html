@@ -6,7 +6,7 @@
   <title>UPI Split Controller</title>
   
   <link href="https://googleapis.com" rel="stylesheet">
-  <!-- Load a stable, single-file lightweight QR decoder engine -->
+  <!-- Load the stable standalone version of the decoder engine -->
   <script src="https://jsdelivr.net"></script>
 
   <style>
@@ -113,9 +113,11 @@
       background: #e2e8f0;
     }
 
-    /* Keep native file wrappers hidden */
     .hidden-input {
       display: none !important;
+      position: absolute;
+      width: 1px;
+      height: 1px;
     }
 
     .submit-btn {
@@ -147,34 +149,34 @@
 
     <form class="form-container" onsubmit="event.preventDefault();">
       
-      <!-- Field 1: Destination UPI ID and Scanner UI Buttons -->
+      <!-- Field 1: Destination UPI ID and Interactive Form Fields -->
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
         <input type="text" id="upi-id" placeholder="e.g., store@okaxis" required>
         
         <div class="scanner-options-row">
-          <!-- Button 1: Calls system camera application -->
+          <!-- Direct hardware trigger -->
           <button type="button" class="action-badge-btn" id="btn-camera">
             📷 SCANNER
           </button>
-          <!-- Button 2: Calls system device photo gallery gallery picker -->
+          <!-- Direct static layout photo album gallery selector -->
           <button type="button" class="action-badge-btn" id="btn-gallery">
             🖼️ UPLOAD UPI
           </button>
         </div>
 
-        <!-- Hidden structural elements handling native tasks -->
+        <!-- Hidden elements containing raw structural handlers -->
         <input type="file" id="input-camera" accept="image/*" capture="environment" class="hidden-input">
         <input type="file" id="input-gallery" accept="image/*" class="hidden-input">
       </div>
 
-      <!-- Field 2: Payee Name text input -->
+      <!-- Field 2: Payee Name verification layout block -->
       <div class="input-group">
         <label for="payee-name">Payee Name</label>
         <input type="text" id="payee-name" placeholder="e.g., Raju Kirana Store" required>
       </div>
 
-      <!-- Field 3: Total Bill Amount numeric text input -->
+      <!-- Field 3: Total Bill Amount parameters setup configuration -->
       <div class="input-group">
         <label for="bill-amount">Total Bill Amount (₹)</label>
         <input type="number" id="bill-amount" placeholder="e.g., 5000" required>
@@ -195,74 +197,107 @@
     const upiInput = document.getElementById('upi-id');
     const nameInput = document.getElementById('payee-name');
 
-    // Trigger actions mapping custom styled layout buttons to hidden inputs
-    btnCamera.addEventListener('click', () => inputCamera.click());
-    btnGallery.addEventListener('click', () => inputGallery.click());
+    // Routing layout triggers to structural system variables cleanly
+    btnCamera.addEventListener('click', () => {
+      inputCamera.click();
+    });
+    
+    btnGallery.addEventListener('click', () => {
+      inputGallery.click();
+    });
 
-    // Event listeners capturing file loading tasks
-    inputCamera.addEventListener('change', (e) => processSelectedImageFile(e.target.files));
-    inputGallery.addEventListener('change', (e) => processSelectedImageFile(e.target.files));
+    // Tracking events captured from image updates
+    inputCamera.addEventListener('change', (e) => handleImageParsingStream(e.target.files));
+    inputGallery.addEventListener('change', (e) => handleImageParsingStream(e.target.files));
 
-    // Core scanning method using HTML5 Canvas rendering data extraction processing
-    function processSelectedImageFile(fileList) {
-      if (fileList.length === 0) return;
-      const selectedFile = fileList[0];
-      
-      const fileReader = new FileReader();
-      fileReader.onload = function(event) {
-        const imageElement = new Image();
-        imageElement.onload = function() {
-          // Setup background canvas tracking area context
-          const outputCanvas = document.createElement('canvas');
-          const canvasContext = outputCanvas.getContext('2d');
-          
-          outputCanvas.width = imageElement.width;
-          outputCanvas.height = imageElement.height;
-          canvasContext.drawImage(imageElement, 0, 0, imageElement.width, imageElement.height);
-          
-          const rawImageData = canvasContext.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
-          
-          // Execute extraction logic tracking library package
-          const scannedCodeResult = jsQR(rawImageData.data, rawImageData.width, rawImageData.height, {
-            inversionAttempts: "dontInvert",
-          });
-          
-          if (scannedCodeResult && scannedCodeResult.data) {
-            parseAndFillUPIData(scannedCodeResult.data);
+    // FIXED: Bulletproof background canvas parser module
+    function handleImageParsingStream(files) {
+      if (!files || files.length === 0) return;
+      const targetFile = files[0];
+
+      // Convert image data structure to a safe temporary blob URL mapping link
+      const temporaryBlobUrl = URL.createObjectURL(targetFile);
+      const virtualImage = new Image();
+
+      virtualImage.onload = function() {
+        const structuralCanvas = document.createElement('canvas');
+        const canvasContext = structuralCanvas.getContext('2d');
+
+        // Limit maximum size dimensions to safely speed up mobile image searches without freezing
+        let renderWidth = virtualImage.width;
+        let renderHeight = virtualImage.height;
+        const maxResolutionMetric = 1000; 
+
+        if (renderWidth > maxResolutionMetric || renderHeight > maxResolutionMetric) {
+          if (renderWidth > renderHeight) {
+            renderHeight = Math.round((renderHeight * maxResolutionMetric) / renderWidth);
+            renderWidth = maxResolutionMetric;
           } else {
-            alert("Could not detect a clear UPI QR code structure in this image. Please make sure the QR code fills the frame clearly.");
+            renderWidth = Math.round((renderWidth * maxResolutionMetric) / renderHeight);
+            renderHeight = maxResolutionMetric;
           }
-        };
-        imageElement.src = event.target.result;
+        }
+
+        structuralCanvas.width = renderWidth;
+        structuralCanvas.height = renderHeight;
+        
+        // Draw image down into canvas container safely
+        canvasContext.drawImage(virtualImage, 0, 0, renderWidth, renderHeight);
+        
+        try {
+          const rawPixelDataBlock = canvasContext.getImageData(0, 0, renderWidth, renderHeight);
+          
+          // Call the decoder module instantly
+          const scanResults = jsQR(rawPixelDataBlock.data, rawPixelDataBlock.width, rawPixelDataBlock.height, {
+            inversionAttempts: "dontInvert"
+          });
+
+          if (scanResults && scanResults.data) {
+            extractAndPopulateUPIStrings(scanResults.data);
+          } else {
+            alert("No QR Code detected! Please make sure the image is bright, clear, and focused directly on the QR code.");
+          }
+        } catch (canvasError) {
+          alert("Image loading canvas process error: " + canvasError.message);
+        } finally {
+          // Free browser execution memory links safely
+          URL.revokeObjectURL(temporaryBlobUrl);
+        }
       };
-      fileReader.readAsDataURL(selectedFile);
-      
-      // Clear values buffer allowing repeating tracking actions seamlessly
+
+      virtualImage.onerror = function() {
+        alert("Failed to read the image file format properly.");
+        URL.revokeObjectURL(temporaryBlobUrl);
+      };
+
+      virtualImage.src = temporaryBlobUrl;
+
+      // Clear input fields so you can scan the same file again if needed
       inputCamera.value = "";
       inputGallery.value = "";
     }
 
-    // Shared URI string conversion data handler module
-    function parseAndFillUPIData(decodedText) {
+    // Shared internal standard parameter value extractor string logic block
+    function extractAndPopulateUPIStrings(decodedText) {
       if (decodedText.startsWith("upi://pay")) {
         try {
-          const parsingQuery = decodedText.replace("upi://pay", "");
-          const dataURLParameters = new URLSearchParams(parsingQuery);
+          const parsingBlocks = decodedText.replace("upi://pay", "");
+          const urlDataParameters = new URLSearchParams(parsingBlocks);
           
-          const targetUPIAddress = dataURLParameters.get('pa'); 
-          const targetPayeeName = dataURLParameters.get('pn'); 
+          const verifiedUPIAddress = urlDataParameters.get('pa'); 
+          const verifiedPayeeName = urlDataParameters.get('pn'); 
 
-          if (targetUPIAddress) {
-            upiInput.value = targetUPIAddress;
+          if (verifiedUPIAddress) {
+            upiInput.value = verifiedUPIAddress;
           }
-          if (targetPayeeName) {
-            nameInput.value = decodeURIComponent(targetPayeeName);
+          if (verifiedPayeeName) {
+            nameInput.value = decodeURIComponent(verifiedPayeeName);
           }
-        } catch (error) {
-          alert("Error structural processing parameters setup configuration.");
+        } catch (err) {
+          alert("Error parsing structural configuration link deep values setup.");
         }
       } else {
-        alert("This image does not contain a valid payment UPI QR Code format.");
+        alert("Scanned successfully, but this code is not a valid standard payment UPI deep link layout format.");
       }
     }
   </script>
