@@ -6,9 +6,6 @@
   <title>UPI Split Controller</title>
   
   <link href="https://googleapis.com" rel="stylesheet">
-  
-  <!-- Optimized, ultra-fast worker-based QR engine that won't slow down page load -->
-  <script src="https://jsdelivr.net"></script>
 
   <style>
     :root {
@@ -72,6 +69,12 @@
       margin-bottom: 8px;
     }
 
+    /* Layout handling custom styled inputs */
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+
     input[type="text"], input[type="number"] {
       width: 100%;
       padding: 14px 16px;
@@ -87,35 +90,21 @@
       border-color: var(--primary-color);
     }
 
-    .scanner-options-row {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .action-badge-btn {
-      flex: 1;
+    .inline-helper-btn {
       background: #f1f5f9;
       border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 12px;
+      padding: 0 14px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
       font-weight: 500;
-      font-size: 14px;
-      color: #4b5563;
+      font-size: 13px;
+      color: #1a4384;
+      white-space: nowrap;
       transition: all 0.2s;
     }
 
-    .action-badge-btn:hover {
+    .inline-helper-btn:hover {
       background: #e2e8f0;
-    }
-
-    .hidden-input {
-      display: none !important;
     }
 
     .submit-btn {
@@ -136,6 +125,13 @@
     .submit-btn:hover {
       background: var(--primary-hover);
     }
+
+    .quick-info-note {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
   </style>
 </head>
 <body>
@@ -145,26 +141,25 @@
       <h1>UPI Split Controller</h1>
     </div>
 
-    <form class="form-container" onsubmit="event.preventDefault();">
+    <form class="form-container" id="split-form" onsubmit="event.preventDefault();">
       
+      <!-- Target Field 1: UPI ID entry with instant clipboard parsing helper -->
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
-        <input type="text" id="upi-id" placeholder="e.g., store@okaxis" required>
-        
-        <div class="scanner-options-row">
-          <button type="button" class="action-badge-btn" id="btn-camera">📷 SCANNER</button>
-          <button type="button" class="action-badge-btn" id="btn-gallery">🖼️ UPLOAD UPI</button>
+        <div class="input-row">
+          <input type="text" id="upi-id" placeholder="e.g., store@okaxis" required>
+          <button type="button" class="inline-helper-btn" id="btn-paste">📋 Paste Copied Link</button>
         </div>
-
-        <input type="file" id="input-camera" accept="image/*" capture="environment" class="hidden-input">
-        <input type="file" id="input-gallery" accept="image/*" class="hidden-input">
+        <p class="quick-info-note">Tip: You can paste a standard text string or an extracted UPI deep link (`upi://pay...`) here, and it will fill automatically.</p>
       </div>
 
+      <!-- Target Field 2: Payee Name input block -->
       <div class="input-group">
         <label for="payee-name">Payee Name</label>
         <input type="text" id="payee-name" placeholder="e.g., Raju Kirana Store" required>
       </div>
 
+      <!-- Target Field 3: Total Bill Amount numeric setup config -->
       <div class="input-group">
         <label for="bill-amount">Total Bill Amount (₹)</label>
         <input type="number" id="bill-amount" placeholder="e.g., 5000" required>
@@ -175,58 +170,64 @@
   </div>
 
   <script>
-    const btnCamera = document.getElementById('btn-camera');
-    const btnGallery = document.getElementById('btn-gallery');
-    const inputCamera = document.getElementById('input-camera');
-    const inputGallery = document.getElementById('input-gallery');
-    
     const upiInput = document.getElementById('upi-id');
     const nameInput = document.getElementById('payee-name');
+    const btnPaste = document.getElementById('btn-paste');
 
-    btnCamera.addEventListener('click', () => inputCamera.click());
-    btnGallery.addEventListener('click', () => inputGallery.click());
-
-    inputCamera.addEventListener('change', (e) => executeQrScan(e.target.files[0]));
-    inputGallery.addEventListener('change', (e) => executeQrScan(e.target.files[0]));
-
-    // BULLETPROOF ENGINE SCAN PROCESSOR
-    function executeQrScan(file) {
-      if (!file) return;
-
-      // Force the modern engine worker stack to read the image file format directly
-      QrScanner.scanImage(file, { returnDetailedScanResult: true })
-        .then(result => {
-          if (result && result.data) {
-            processUPITextString(result.data);
-          } else {
-            alert("No recognizable QR Code found. Please try a cleaner picture.");
-          }
-        })
-        .catch(err => {
-          alert("Could not decode the QR code. Please ensure the image is clear and well-lit.");
-        });
-
-      // Clear the element values to allow scanning sequentially
-      inputCamera.value = "";
-      inputGallery.value = "";
-    }
-
-    function processUPITextString(decodedText) {
-      if (decodedText.startsWith("upi://pay")) {
-        const structuralQuery = decodedText.replace("upi://pay", "");
-        const parsingParameters = new URLSearchParams(structuralQuery);
-        
-        const payeeAddress = parsingParameters.get('pa'); 
-        const payeeName = parsingParameters.get('pn'); 
-
-        if (payeeAddress) {
-          upiInput.value = payeeAddress;
+    // Clipboard parsing integration block
+    btnPaste.addEventListener('click', async () => {
+      try {
+        const textFromClipboard = await navigator.clipboard.readText();
+        if (textFromClipboard) {
+          processRawInputText(textFromClipboard.trim());
         }
-        if (payeeName) {
-          nameInput.value = decodeURIComponent(payeeName);
+      } catch (err) {
+        // Fallback option if clipboard system permissions are explicitly restricted
+        const manualStringPrompt = prompt("Paste your copied UPI payment text or link string here:");
+        if (manualStringPrompt) {
+          processRawInputText(manualStringPrompt.trim());
+        }
+      }
+    });
+
+    // Handle manual pasting directly into the box field as well
+    upiInput.addEventListener('input', (e) => {
+      const incomingValue = e.target.value.trim();
+      if (incomingValue.includes('upi://pay') || incomingValue.includes('pa=')) {
+        processRawInputText(incomingValue);
+      }
+    });
+
+    // Central text router engine
+    function processRawInputText(rawText) {
+      if (rawText.includes("upi://pay") || rawText.includes("pa=")) {
+        try {
+          // Clean text structures if deep-link parameters are enclosed inside wider query text blocks
+          let workingUrlSegment = rawText;
+          if (rawText.contains && rawText.includes("upi://pay")) {
+            const startIndexPosition = rawText.indexOf("upi://pay");
+            workingUrlSegment = rawText.substring(startIndexPosition);
+          }
+          
+          const parameterString = workingUrlSegment.replace("upi://pay", "").replace("?", "");
+          const urlExtractionEngine = new URLSearchParams(parameterString);
+          
+          const extractedUPIAddress = urlExtractionEngine.get('pa');
+          const extractedPayeeName = urlExtractionEngine.get('pn');
+
+          if (extractedUPIAddress) {
+            upiInput.value = extractedUPIAddress;
+          }
+          if (extractedPayeeName) {
+            nameInput.value = decodeURIComponent(extractedPayeeName);
+          }
+        } catch (error) {
+          // If formatting drops parameters, fall back safely to passing the raw value
+          upiInput.value = rawText;
         }
       } else {
-        alert("This QR code is valid, but it does not map to a standard merchant UPI payment string.");
+        // Safe mapping configuration option
+        upiInput.value = rawText;
       }
     }
   </script>
