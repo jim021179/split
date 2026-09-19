@@ -6,6 +6,9 @@
   <title>UPI Split Controller</title>
   
   <link href="https://googleapis.com" rel="stylesheet">
+  
+  <!-- Mini, ultra-fast inline parser engine that loads instantly -->
+  <script src="https://jsdelivr.net"></script>
 
   <style>
     :root {
@@ -143,6 +146,8 @@
     </div>
 
     <form class="form-container" onsubmit="event.preventDefault();">
+      
+      <!-- Input Field 1: UPI ID with working hardware shortcuts -->
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
         <input type="text" id="upi-id" placeholder="e.g., store@okaxis" required>
@@ -156,11 +161,13 @@
         <input type="file" id="input-gallery" accept="image/*" class="hidden-input">
       </div>
 
+      <!-- Input Field 2: Payee Name -->
       <div class="input-group">
         <label for="payee-name">Payee Name</label>
         <input type="text" id="payee-name" placeholder="e.g., Raju Kirana Store" required>
       </div>
 
+      <!-- Input Field 3: Total Bill Amount -->
       <div class="input-group">
         <label for="bill-amount">Total Bill Amount (₹)</label>
         <input type="number" id="bill-amount" placeholder="e.g., 5000" required>
@@ -182,56 +189,48 @@
     btnCamera.addEventListener('click', () => inputCamera.click());
     btnGallery.addEventListener('click', () => inputGallery.click());
 
-    inputCamera.addEventListener('change', (e) => processImageNative(e.target.files));
-    inputGallery.addEventListener('change', (e) => processImageNative(e.target.files));
+    inputCamera.addEventListener('change', (e) => executeQRDecode(e.target.files));
+    inputGallery.addEventListener('change', (e) => executeQRDecode(e.target.files));
 
-    // FAST NATIVE DETECTION ENGINE
-    async function processImageNative(files) {
+    // COMPATIBLE ULTRA-FAST DECODER
+    function executeQRDecode(files) {
       if (!files || files.length === 0) return;
+
+      const currentFile = files[0];
+      const objectReaderUrl = URL.createObjectURL(currentFile);
       
-      // Polyfill check for older browsers
-      if (!window.BarcodeDetector) {
-        alert("Your mobile browser does not support native code scanning. Please update Chrome or Safari.");
-        return;
-      }
+      // Initialize the lightweight background decoder
+      const qrEngine = new QrCode();
 
-      const file = files[0];
-      const blobUrl = URL.createObjectURL(file);
-      const img = new Image();
-
-      img.onload = async function() {
-        try {
-          // Initialize native browser engine for QR codes exclusively [1]
-          const detector = new BarcodeDetector({ formats: ['qr_code'] }); [1]
-          const barcodes = await detector.detect(img); [1]
-
-          if (barcodes.length > 0 && barcodes[0].rawValue) {
-            extractUPIValues(barcodes[0].rawValue);
-          } else {
-            alert("Could not detect a sharp UPI QR code. Try taking a closer, steadier photo.");
-          }
-        } catch (err) {
-          alert("Scanning failed: " + err.message);
-        } finally {
-          URL.revokeObjectURL(blobUrl);
+      qrEngine.callback = function(error, result) {
+        if (error) {
+          alert("Could not detect a clear QR code format. Please try again with a brighter, steadier picture.");
+        } else if (result && result.result) {
+          extractUPIParameters(result.result);
         }
+        URL.revokeObjectURL(objectReaderUrl);
       };
 
-      img.src = blobUrl;
+      // Pass the picture file data link into the decoder
+      qrEngine.decode(objectReaderUrl);
+
+      // Reset values to enable repeated scans seamlessly
       inputCamera.value = "";
       inputGallery.value = "";
     }
 
-    function extractUPIValues(decodedText) {
+    function extractUPIParameters(decodedText) {
       if (decodedText.startsWith("upi://pay")) {
-        const queryParams = new URLSearchParams(decodedText.replace("upi://pay", ""));
-        const address = queryParams.get('pa'); 
-        const name = queryParams.get('pn'); 
+        const structuralQuery = decodedText.replace("upi://pay", "");
+        const extractionParams = new URLSearchParams(structuralQuery);
+        
+        const resolvedAddress = extractionParams.get('pa'); 
+        const resolvedName = extractionParams.get('pn'); 
 
-        if (address) upiInput.value = address;
-        if (name) nameInput.value = decodeURIComponent(name);
+        if (resolvedAddress) upiInput.value = resolvedAddress;
+        if (resolvedName) nameInput.value = decodeURIComponent(resolvedName);
       } else {
-        alert("The scanned image is not a valid UPI payment QR code.");
+        alert("This QR code is valid, but it does not match a standard merchant UPI payment string structure.");
       }
     }
   </script>
