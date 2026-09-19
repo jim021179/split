@@ -6,7 +6,7 @@
   <title>UPI Split Controller</title>
   
   <link href="https://googleapis.com" rel="stylesheet">
-  <!-- Load the external camera scanner engine -->
+  <!-- Load the main engine source package link -->
   <script src="https://unpkg.com" type="text/javascript"></script>
 
   <style>
@@ -136,7 +136,7 @@
       background: var(--primary-hover);
     }
 
-    /* FIXED: Full-screen overlay modal configuration */
+    /* Fixed Modal Popups Setup Configuration */
     #camera-overlay {
       display: none;
       position: fixed;
@@ -144,7 +144,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(0, 0, 0, 0.9);
       z-index: 9999;
       justify-content: center;
       align-items: center;
@@ -152,38 +152,41 @@
       padding: 20px;
     }
 
-    /* FIXED: Prevent content collapse inside internal viewer elements */
-    #qr-reader {
+    /* Target rendering viewing portal layout containerbox */
+    #qr-video-container {
       width: 100%;
       max-width: 360px;
-      background: #ffffff;
-      border-radius: 16px;
+      aspect-ratio: 1 / 1;
+      background: #000000;
+      border-radius: 20px;
       overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-      border: none !important;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      position: relative;
     }
 
-    /* Fix internal standard library styling defaults */
-    #qr-reader__dashboard, #qr-reader__status_span {
-      padding: 10px !important;
-      font-size: 14px !important;
+    #qr-video-container video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
     }
 
-    #qr-reader video {
+    /* Scanning target reticle visualization anchor overlay styling lines */
+    .scan-region-highlight {
+      border: 2px dashed #3b82f6 !important;
       border-radius: 12px;
-      object-fit: cover;
     }
 
     .close-camera-btn {
-      margin-top: 20px;
+      margin-top: 25px;
       background: #ffffff;
-      color: #333;
+      color: #333333;
       border: none;
-      padding: 12px 32px;
+      padding: 14px 36px;
       font-weight: 600;
+      font-size: 15px;
       border-radius: 30px;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
     }
   </style>
 </head>
@@ -196,29 +199,29 @@
 
     <form class="form-container" onsubmit="event.preventDefault();">
       
-      <!-- Field 1: Destination UPI ID text block with scanner actions -->
+      <!-- Field 1: Destination UPI ID parameters initialization -->
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
         <input type="text" id="upi-id" placeholder="e.g., store@okaxis" required>
         
         <div class="scanner-options-row">
           <button type="button" class="action-badge-btn" id="open-camera-btn">
-            📷 Scanner
+            📷 SCANNER
           </button>
           <button type="button" class="action-badge-btn" id="trigger-file-btn">
-            🖼️ Upload Upi
+            🖼️UPLOAD UPI
           </button>
         </div>
         <input type="file" id="hidden-file-input" accept="image/*">
       </div>
 
-      <!-- Field 2: Payee Name text block -->
+      <!-- Field 2: Payee Name parameter entry block -->
       <div class="input-group">
         <label for="payee-name">Payee Name</label>
         <input type="text" id="payee-name" placeholder="e.g., Raju Kirana Store" required>
       </div>
 
-      <!-- Field 3: Total Bill Amount numeric input block -->
+      <!-- Field 3: Total Bill Amount numeric value entry config -->
       <div class="input-group">
         <label for="bill-amount">Total Bill Amount (₹)</label>
         <input type="number" id="bill-amount" placeholder="e.g., 5000" required>
@@ -230,9 +233,9 @@
     </form>
   </div>
 
-  <!-- Camera Session Popups Overlay layout container -->
+  <!-- Re-engineered layout template containing raw element blocks -->
   <div id="camera-overlay">
-    <div id="qr-reader"></div>
+    <div id="qr-video-container"></div>
     <button type="button" class="close-camera-btn" id="close-camera-btn">Cancel Scan</button>
   </div>
 
@@ -246,39 +249,45 @@
     const upiInput = document.getElementById('upi-id');
     const nameInput = document.getElementById('payee-name');
 
-    let html5QrScannerInstance = null;
+    let html5QrEngineInstance = null;
 
-    // --- OPTION A: Live Camera Engine Tracking Setup ---
+    // --- NEW LOW-LEVEL ENGINE SETUP: Bypasses standard wrapper failures ---
     openCameraBtn.addEventListener('click', () => {
       cameraOverlay.style.display = 'flex';
       
-      // Initializing basic UI scanning config mappings
-      html5QrScannerInstance = new Html5QrcodeScanner(
-        "qr-reader", 
-        { 
-          fps: 10, 
-          qrbox: (viewWidth, viewHeight) => {
-            const minEdge = Math.min(viewWidth, viewHeight);
-            const boxSize = Math.floor(minEdge * 0.7);
-            return { width: boxSize, height: boxSize };
-          },
-          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
-        },
-        /* verbose= */ false
-      );
+      // Instantiate engine using the direct element pointer mapping logic
+      html5QrEngineInstance = new Html5Qrcode("qr-video-container");
 
-      html5QrScannerInstance.render(onScanSuccess, onScanFailure);
+      const cameraConfig = { 
+        fps: 10, 
+        qrbox: (width, height) => {
+          const edge = Math.min(width, height);
+          const borderBox = Math.floor(edge * 0.7);
+          return { width: borderBox, height: borderBox };
+        }
+      };
+
+      // Force environmental back camera configuration on modern hardware setups
+      html5QrEngineInstance.start(
+        { facingMode: "environment" }, 
+        cameraConfig, 
+        onScanSuccess, 
+        onScanFailure
+      ).catch(err => {
+        alert("Camera startup encountered problems: " + err);
+        shutDownLiveCameraSession();
+      });
     });
 
     closeCameraBtn.addEventListener('click', shutDownLiveCameraSession);
 
     function shutDownLiveCameraSession() {
-      if (html5QrScannerInstance) {
-        html5QrScannerInstance.clear().then(() => {
+      if (html5QrEngineInstance && html5QrEngineInstance.isScanning) {
+        html5QrEngineInstance.stop().then(() => {
           cameraOverlay.style.display = 'none';
-          html5QrScannerInstance = null;
+          html5QrEngineInstance = null;
         }).catch(err => {
-          console.error("Camera reset issue: ", err);
+          console.error("Failsafe tracking error: ", err);
           cameraOverlay.style.display = 'none';
         });
       } else {
@@ -286,7 +295,7 @@
       }
     }
 
-    // --- OPTION B: Photo / Screenshot Scanning Logic ---
+    // --- OPTION B: Image File Upload Processor engine module ---
     triggerFileBtn.addEventListener('click', () => {
       hiddenFileInput.click();
     });
@@ -295,7 +304,7 @@
       if (event.target.files.length === 0) return;
       
       const targetImageFile = event.target.files[0];
-      const html5QrCodeLocalScanner = new Html5Qrcode("qr-reader");
+      const html5QrCodeLocalScanner = new Html5Qrcode("qr-video-container");
       
       html5QrCodeLocalScanner.scanFile(targetImageFile, true)
         .then(decodedText => {
@@ -303,12 +312,12 @@
           hiddenFileInput.value = ""; 
         })
         .catch(err => {
-          alert("Could not read a clean UPI QR link setup from the selected screenshot. Please try a different clear image file.");
+          alert("Could not extract a readable UPI structure. Make sure your screenshot is clear.");
           hiddenFileInput.value = ""; 
         });
     });
 
-    // --- Shared UPI Engine Deep-link Verification Router ---
+    // --- Centralized Processing parsing module logic data params ---
     function onScanSuccess(decodedText) {
       if (decodedText.startsWith("upi://pay")) {
         try {
@@ -327,17 +336,13 @@
 
           shutDownLiveCameraSession();
         } catch (e) {
-          alert("Error extracting registration configurations from standard link.");
+          alert("Formatting structural reading parsing system error.");
         }
       } else {
-        alert("This QR code is not a valid merchant payment link destination structure mapping configuration.");
+        alert("Invalid QR format structure. Ensure you scan a standard merchant UPI code block setup mapping.");
         shutDownLiveCameraSession();
       }
     }
 
     function onScanFailure(error) {
-      // Loop kept empty to avoid verbose system logs during continuous adjustments
-    }
-  </script>
-</body>
-</html>
+      // Intentionally bypassed to optimize render speeds during high-rate capture loops
