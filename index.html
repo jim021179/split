@@ -6,6 +6,9 @@
   <title>UPI Split Controller</title>
   
   <link href="https://googleapis.com" rel="stylesheet">
+  
+  <!-- Optimized, ultra-fast worker-based QR engine that won't slow down page load -->
+  <script src="https://jsdelivr.net"></script>
 
   <style>
     :root {
@@ -172,28 +175,6 @@
   </div>
 
   <script>
-    // --- 100% SELF-CONTAINED MINI ENGINE INLINE SNIPPET ---
-    // Embedded barcode fallback engine module loop logic blocks
-    const InlineQRReader = {
-      decodeCanvas: function(canvasElement) {
-        try {
-          const ctx = canvasElement.getContext('2d');
-          const width = canvasElement.width;
-          const height = canvasElement.height;
-          const srcData = ctx.getImageData(0, 0, width, height).data;
-          
-          // Fast matrix pixel tracking loop to locate typical UPI structures
-          // Bypasses resource-heavy scanning for instant layout interpretation
-          let rawStringResult = "";
-          let combinedDataText = "";
-          
-          // Check standard text components inside file canvas elements
-          // If native modern tracking exists, tap into the background loop
-          return null; 
-        } catch(e) { return null; }
-      }
-    };
-
     const btnCamera = document.getElementById('btn-camera');
     const btnGallery = document.getElementById('btn-gallery');
     const inputCamera = document.getElementById('input-camera');
@@ -205,63 +186,47 @@
     btnCamera.addEventListener('click', () => inputCamera.click());
     btnGallery.addEventListener('click', () => inputGallery.click());
 
-    inputCamera.addEventListener('change', (e) => startLocalImageRead(e.target.files));
-    inputGallery.addEventListener('change', (e) => startLocalImageRead(e.target.files));
+    inputCamera.addEventListener('change', (e) => executeQrScan(e.target.files[0]));
+    inputGallery.addEventListener('change', (e) => executeQrScan(e.target.files[0]));
 
-    function startLocalImageRead(files) {
-      if (!files || files.length === 0) return;
+    // BULLETPROOF ENGINE SCAN PROCESSOR
+    function executeQrScan(file) {
+      if (!file) return;
 
-      const file = files[0];
-      const reader = new FileReader();
-
-      reader.onload = function(event) {
-        const img = new Image();
-        img.onload = function() {
-          // Check for native browser modern detection availability internally
-          if (window.BarcodeDetector) {
-            const nativeDetectorInstance = new BarcodeDetector({ formats: ['qr_code'] });
-            nativeDetectorInstance.detect(img)
-              .then(barcodes => {
-                if (barcodes.length > 0 && barcodes[0].rawValue) {
-                  processUPILinkParams(barcodes[0].rawValue);
-                } else {
-                  fallbackCanvasScan(img);
-                }
-              })
-              .catch(() => fallbackCanvasScan(img));
+      // Force the modern engine worker stack to read the image file format directly
+      QrScanner.scanImage(file, { returnDetailedScanResult: true })
+        .then(result => {
+          if (result && result.data) {
+            processUPITextString(result.data);
           } else {
-            fallbackCanvasScan(img);
+            alert("No recognizable QR Code found. Please try a cleaner picture.");
           }
-        };
-        img.src = event.target.result;
-      };
-      reader.readAsDataURL(file);
+        })
+        .catch(err => {
+          alert("Could not decode the QR code. Please ensure the image is clear and well-lit.");
+        });
 
+      // Clear the element values to allow scanning sequentially
       inputCamera.value = "";
       inputGallery.value = "";
     }
 
-    function fallbackCanvasScan(img) {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0, img.width, img.height);
-      
-      // Fallback message requesting user validation if phone hardware lacks auto-parsing layers
-      alert("Image loaded completely! If fields do not auto-fill, please type your UPI ID details into the text box below.");
-    }
-
-    function processUPILinkParams(decodedText) {
+    function processUPITextString(decodedText) {
       if (decodedText.startsWith("upi://pay")) {
-        const queryBlocks = decodedText.replace("upi://pay", "");
-        const queryParams = new URLSearchParams(queryBlocks);
+        const structuralQuery = decodedText.replace("upi://pay", "");
+        const parsingParameters = new URLSearchParams(structuralQuery);
         
-        const address = queryParams.get('pa'); 
-        const name = queryParams.get('pn'); 
+        const payeeAddress = parsingParameters.get('pa'); 
+        const payeeName = parsingParameters.get('pn'); 
 
-        if (address) upiInput.value = address;
-        if (name) nameInput.value = decodeURIComponent(name);
+        if (payeeAddress) {
+          upiInput.value = payeeAddress;
+        }
+        if (payeeName) {
+          nameInput.value = decodeURIComponent(payeeName);
+        }
+      } else {
+        alert("This QR code is valid, but it does not map to a standard merchant UPI payment string.");
       }
     }
   </script>
