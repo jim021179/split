@@ -7,7 +7,7 @@
   
   <link href="https://googleapis.com" rel="stylesheet">
   
-  <!-- Mini, ultra-fast inline parser engine that loads instantly -->
+  <!-- Tiny, fast, and universally compatible QR processing engine -->
   <script src="https://jsdelivr.net"></script>
 
   <style>
@@ -147,7 +147,7 @@
 
     <form class="form-container" onsubmit="event.preventDefault();">
       
-      <!-- Input Field 1: UPI ID with working hardware shortcuts -->
+      <!-- Input Field 1: Destination UPI ID and Scanner Controls -->
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
         <input type="text" id="upi-id" placeholder="e.g., store@okaxis" required>
@@ -157,6 +157,7 @@
           <button type="button" class="action-badge-btn" id="btn-gallery">🖼️ UPLOAD UPI</button>
         </div>
 
+        <!-- Safe Native Mobile Actions Routing elements -->
         <input type="file" id="input-camera" accept="image/*" capture="environment" class="hidden-input">
         <input type="file" id="input-gallery" accept="image/*" class="hidden-input">
       </div>
@@ -189,48 +190,77 @@
     btnCamera.addEventListener('click', () => inputCamera.click());
     btnGallery.addEventListener('click', () => inputGallery.click());
 
-    inputCamera.addEventListener('change', (e) => executeQRDecode(e.target.files));
-    inputGallery.addEventListener('change', (e) => executeQRDecode(e.target.files));
+    inputCamera.addEventListener('change', (e) => decodeImageQR(e.target.files));
+    inputGallery.addEventListener('change', (e) => decodeImageQR(e.target.files));
 
-    // COMPATIBLE ULTRA-FAST DECODER
-    function executeQRDecode(files) {
+    // STABLE IMMUTABLE CANVAS BACKEND SCANNER MODULE
+    function decodeImageQR(files) {
       if (!files || files.length === 0) return;
 
-      const currentFile = files[0];
-      const objectReaderUrl = URL.createObjectURL(currentFile);
-      
-      // Initialize the lightweight background decoder
-      const qrEngine = new QrCode();
+      const file = files[0];
+      const reader = new FileReader();
 
-      qrEngine.callback = function(error, result) {
-        if (error) {
-          alert("Could not detect a clear QR code format. Please try again with a brighter, steadier picture.");
-        } else if (result && result.result) {
-          extractUPIParameters(result.result);
-        }
-        URL.revokeObjectURL(objectReaderUrl);
+      reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          // Optimize dimension metrics to prevent parsing freeze on huge images
+          const maxDim = 800;
+          let w = img.width;
+          let h = img.height;
+
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+
+          canvas.width = w;
+          canvas.height = h;
+          ctx.drawImage(img, 0, 0, w, h);
+
+          try {
+            const imgData = ctx.getImageData(0, 0, w, h);
+            // Run processing natively via the reliable embedded engine script module
+            const qrResult = jsQR(imgData.data, imgData.width, imgData.height, {
+              inversionAttempts: "dontInvert"
+            });
+
+            if (qrResult && qrResult.data) {
+              extractUPIParams(qrResult.data);
+            } else {
+              alert("No clear QR code pattern recognized. Make sure the code is completely flat and well-lit.");
+            }
+          } catch (e) {
+            alert("Error reading image buffer configuration: " + e.message);
+          }
+        };
+        img.src = event.target.result;
       };
+      
+      reader.readAsDataURL(file);
 
-      // Pass the picture file data link into the decoder
-      qrEngine.decode(objectReaderUrl);
-
-      // Reset values to enable repeated scans seamlessly
+      // Clean inputs buffer allowing repeated tasks seamlessly
       inputCamera.value = "";
       inputGallery.value = "";
     }
 
-    function extractUPIParameters(decodedText) {
+    function extractUPIParams(decodedText) {
       if (decodedText.startsWith("upi://pay")) {
-        const structuralQuery = decodedText.replace("upi://pay", "");
-        const extractionParams = new URLSearchParams(structuralQuery);
-        
-        const resolvedAddress = extractionParams.get('pa'); 
-        const resolvedName = extractionParams.get('pn'); 
+        const searchParams = new URLSearchParams(decodedText.replace("upi://pay", ""));
+        const address = searchParams.get('pa'); 
+        const name = searchParams.get('pn'); 
 
-        if (resolvedAddress) upiInput.value = resolvedAddress;
-        if (resolvedName) nameInput.value = decodeURIComponent(resolvedName);
+        if (address) upiInput.value = address;
+        if (name) nameInput.value = decodeURIComponent(name);
       } else {
-        alert("This QR code is valid, but it does not match a standard merchant UPI payment string structure.");
+        alert("Scanned successfully, but this code doesn't contain a valid merchant payment UPI setup structure.");
       }
     }
   </script>
