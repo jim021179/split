@@ -1,207 +1,332 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>UPI Split Dashboard</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #f7f9fc;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-        }
-        .app-container {
-            width: 100%;
-            max-width: 480px;
-            background-color: #ffffff;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 0 20px rgba(0,0,0,0.05);
-        }
-        .header {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            padding: 35px 20px;
-            text-align: center;
-            border-bottom-left-radius: 24px;
-            border-bottom-right-radius: 24px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-        }
-        .content {
-            padding: 24px 20px;
-            flex-grow: 1;
-        }
-        .input-card {
-            background: #ffffff;
-            border: 1px solid #e9ecef;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-            margin-bottom: 20px;
-        }
-        .input-group {
-            margin-bottom: 16px;
-            text-align: left;
-        }
-        .input-group label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 6px;
-        }
-        .input-group input {
-            width: 100%;
-            padding: 14px;
-            border: 1px solid #ced4da;
-            border-radius: 10px;
-            font-size: 16px;
-            box-sizing: border-box;
-            background-color: #f8f9fa;
-            transition: border-color 0.2s;
-        }
-        .input-group input:focus {
-            border-color: #2a5298;
-            outline: none;
-            background-color: #ffffff;
-        }
-        .calc-btn {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(42, 82, 152, 0.2);
-        }
-        .section-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #6c757d;
-            text-transform: uppercase;
-            margin-top: 10px;
-            margin-bottom: 16px;
-            letter-spacing: 0.5px;
-        }
-        .payment-card {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .card-details {
-            display: flex;
-            flex-direction: column;
-        }
-        .part-label {
-            font-size: 14px;
-            color: #495057;
-            margin-bottom: 4px;
-        }
-        .part-amount {
-            font-size: 20px;
-            font-weight: 700;
-            color: #212529;
-        }
-        .pay-btn {
-            background-color: #28a745;
-            color: white;
-            text-decoration: none;
-            padding: 12px 24px;
-            font-weight: 600;
-            border-radius: 10px;
-            font-size: 15px;
-            box-shadow: 0 4px 6px rgba(40, 167, 69, 0.15);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UPI Split Controller</title>
+  
+  <!-- Font and QR library loading -->
+  <link href="https://googleapis.com" rel="stylesheet">
+  <script src="https://unpkg.com" type="text/javascript"></script>
+
+  <style>
+    :root {
+      --primary-color: #1a4384; 
+      --primary-hover: #123263;
+      --text-color: #333333;
+      --border-color: #d1d5db;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background-color: #f8fafc;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 20px 0;
+    }
+
+    .app-wrapper {
+      width: 100%;
+      max-width: 440px;
+      background: #ffffff;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    }
+
+    .app-header {
+      background: linear-gradient(180deg, #1e4b8f 0%, #163c75 100%);
+      padding: 35px 20px;
+      text-align: center;
+    }
+
+    .app-header h1 {
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .form-container {
+      padding: 30px 24px;
+    }
+
+    .input-group {
+      margin-bottom: 24px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #4b5563;
+      margin-bottom: 8px;
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 8px;
+    }
+
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      outline: none;
+      color: var(--text-color);
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus {
+      border-color: var(--primary-color);
+    }
+
+    /* Actions row layout for styling scan options */
+    .scanner-options-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .action-badge-btn {
+      flex: 1;
+      background: #f1f5f9;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 500;
+      font-size: 14px;
+      color: #4b5563;
+      transition: all 0.2s;
+    }
+
+    .action-badge-btn:hover {
+      background: #e2e8f0;
+    }
+
+    /* Hidden file element input style hook */
+    #hidden-file-input {
+      display: none;
+    }
+
+    .submit-btn {
+      width: 100%;
+      background: var(--primary-color);
+      color: #ffffff;
+      border: none;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(26, 67, 132, 0.2);
+      transition: background 0.2s;
+      margin-top: 10px;
+    }
+
+    .submit-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Fullscreen Modal Camera overlay layout window */
+    #camera-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      padding: 20px;
+    }
+
+    #qr-reader {
+      width: 100%;
+      max-width: 360px;
+      background: #ffffff;
+      border-radius: 16px;
+      overflow: hidden;
+      padding: 10px;
+    }
+
+    .close-camera-btn {
+      margin-top: 20px;
+      background: #ffffff;
+      color: #333;
+      border: none;
+      padding: 12px 24px;
+      font-weight: 600;
+      border-radius: 30px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-    <div class="app-container">
-        <div class="header">
-            <h1>UPI Split Controller</h1>
-        </div>
-        <div class="content">
-            <div class="input-card">
-                <div class="input-group">
-                    <label>Destination UPI ID</label>
-                    <input type="text" id="upiId" placeholder="e.g., store@okaxis">
-                </div>
-                <div class="input-group">
-                    <label>Payee Name</label>
-                    <input type="text" id="payeeName" placeholder="e.g., Raju Kirana Store">
-                </div>
-                <div class="input-group">
-                    <label>Total Bill Amount (₹)</label>
-                    <input type="number" id="totalAmount" placeholder="e.g., 5000">
-                </div>
-                <button class="calc-btn" onclick="generateSplits()">Generate Split Links</button>
-            </div>
-            
-            <div id="resultSection" style="display: none;">
-                <div class="section-title">Required Split Transactions</div>
-                <div id="buttonArea"></div>
-            </div>
-        </div>
+
+  <div class="app-wrapper">
+    <div class="app-header">
+      <h1>UPI Split Controller</h1>
     </div>
 
-    <script>
-        function generateSplits() {
-            const upiId = document.getElementById('upiId').value.trim();
-            const payeeName = document.getElementById('payeeName').value.trim();
-            let amount = parseFloat(document.getElementById('totalAmount').value) || 0;
-            const buttonArea = document.getElementById('buttonArea');
-            const resultSection = document.getElementById('resultSection');
-            
-            buttonArea.innerHTML = "";
+    <form class="form-container" onsubmit="event.preventDefault();">
+      
+      <!-- Field 1: Destination UPI ID text box input block -->
+      <div class="input-group">
+        <label for="upi-id">Destination UPI ID</label>
+        <input type="text" id="upi-id" placeholder="e.g., store@okaxis" required>
+        
+        <!-- Scanner Selection Options Row Configuration -->
+        <div class="scanner-options-row">
+          <button type="button" class="action-badge-btn" id="open-camera-btn">
+            📷 Live Camera
+          </button>
+          <button type="button" class="action-badge-btn" id="trigger-file-btn">
+            🖼️ Upload Image
+          </button>
+        </div>
+        <!-- Hidden input system file selector -->
+        <input type="file" id="hidden-file-input" accept="image/*">
+      </div>
 
-            if (!upiId || amount <= 0) {
-                alert("Please fill in a valid UPI ID and Amount!");
-                return;
-            }
+      <!-- Field 2: Payee Name text box input block -->
+      <div class="input-group">
+        <label for="payee-name">Payee Name</label>
+        <input type="text" id="payee-name" placeholder="e.g., Raju Kirana Store" required>
+      </div>
 
-            let installments = [];
-            if (amount > 1999) {
-                while (amount > 0) {
-                    let chunk = Math.min(amount, 1999);
-                    installments.push(chunk);
-                    amount -= chunk;
-                }
-            } else {
-                installments.push(amount);
-            }
+      <!-- Field 3: Total Bill Amount numeric text box input block -->
+      <div class="input-group">
+        <label for="bill-amount">Total Bill Amount (₹)</label>
+        <input type="number" id="bill-amount" placeholder="e.g., 5000" required>
+      </div>
 
-            installments.forEach((amt, idx) => {
-                let upiUri = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amt.toFixed(2)}&cu=INR`;
-                let title = installments.length > 1 ? `Pay Part ${idx + 1}` : "Complete Payment";
-                
-                buttonArea.innerHTML += `
-                    <div class="payment-card">
-                        <div class="card-details">
-                            <span class="part-label">${title}</span>
-                            <span class="part-amount">₹${amt.toFixed(2)}</span>
-                        </div>
-                        <a href="${upiUri}" class="pay-btn">Pay Now</a>
-                    </div>
-                `;
-            });
+      <button type="submit" class="submit-btn">
+        Generate Split Links
+      </button>
+    </form>
+  </div>
 
-            resultSection.style.display = "block";
+  <!-- Camera Session Layout Template Overlay Modals -->
+  <div id="camera-overlay">
+    <div id="qr-reader"></div>
+    <button type="button" class="close-camera-btn" id="close-camera-btn">Cancel Scan</button>
+  </div>
+
+  <!-- Application Logic Code Section Block -->
+  <script>
+    const openCameraBtn = document.getElementById('open-camera-btn');
+    const closeCameraBtn = document.getElementById('close-camera-btn');
+    const triggerFileBtn = document.getElementById('trigger-file-btn');
+    const hiddenFileInput = document.getElementById('hidden-file-input');
+    const cameraOverlay = document.getElementById('camera-overlay');
+    
+    const upiInput = document.getElementById('upi-id');
+    const nameInput = document.getElementById('payee-name');
+
+    let html5QrScannerInstance = null;
+
+    // --- OPTION A: Live Camera Engine Tracking Setup ---
+    openCameraBtn.addEventListener('click', () => {
+      cameraOverlay.style.display = 'flex';
+      
+      html5QrScannerInstance = new Html5QrcodeScanner(
+        "qr-reader", 
+        { fps: 15, qrbox: { width: 240, height: 240 } },
+        /* verbose= */ false
+      );
+
+      html5QrScannerInstance.render(onScanSuccess, onScanFailure);
+    });
+
+    closeCameraBtn.addEventListener('click', shutDownLiveCameraSession);
+
+    function shutDownLiveCameraSession() {
+      if (html5QrScannerInstance) {
+        html5QrScannerInstance.clear().then(() => {
+          cameraOverlay.style.display = 'none';
+          html5QrScannerInstance = null;
+        }).catch(err => {
+          console.error("Camera reset issue: ", err);
+          cameraOverlay.style.display = 'none';
+        });
+      } else {
+        cameraOverlay.style.display = 'none';
+      }
+    }
+
+    // --- OPTION B: Photo / Screenshot Scanning Logic ---
+    triggerFileBtn.addEventListener('click', () => {
+      hiddenFileInput.click();
+    });
+
+    hiddenFileInput.addEventListener('change', event => {
+      if (event.target.files.length === 0) return;
+      
+      const targetImageFile = event.target.files[0];
+      const html5QrCodeLocalScanner = new Html5Qrcode("qr-reader");
+      
+      // Process file locally using the engine library
+      html5QrCodeLocalScanner.scanFile(targetImageFile, true)
+        .then(decodedText => {
+          onScanSuccess(decodedText);
+          hiddenFileInput.value = ""; // Clear file selector buffer field
+        })
+        .catch(err => {
+          alert("Could not detect a clear UPI QR code in this image. Please try another screenshot.");
+          hiddenFileInput.value = ""; 
+        });
+    });
+
+    // --- Parser processing shared system engine module ---
+    function onScanSuccess(decodedText) {
+      if (decodedText.startsWith("upi://pay")) {
+        try {
+          const queryBlocks = decodedText.replace("upi://pay", "");
+          const searchDataParameters = new URLSearchParams(queryBlocks);
+          
+          const parsedUPIAddress = searchDataParameters.get('pa'); 
+          const parsedPayeeName = searchDataParameters.get('pn'); 
+
+          if (parsedUPIAddress) {
+            upiInput.value = parsedUPIAddress;
+          }
+          if (parsedPayeeName) {
+            nameInput.value = decodeURIComponent(parsedPayeeName);
+          }
+
+          // Automatically clear screen and close any open cameras if active
+          shutDownLiveCameraSession();
+        } catch (e) {
+          alert("Parsing error when trying to fetch data from the layout configuration parameters.");
         }
-    </script>
+      } else {
+        alert("This QR code is not a valid standard payment link format destination address mapping.");
+        shutDownLiveCameraSession();
+      }
+    }
+
+    function onScanFailure(error) {
+      // Loop kept empty to avoid verbose system logs during continuous framing setup adjustments
+    }
+  </script>
 </body>
 </html>
