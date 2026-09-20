@@ -75,12 +75,14 @@
     .input-row {
       display: flex;
       gap: 8px;
+      align-items: center;
     }
 
+    /* Small Screen Optimization: Slightly compressed fonts & padding so long texts don't hide */
     input[type="text"], input[type="number"] {
       width: 100%;
-      padding: 14px 16px;
-      font-size: 16px;
+      padding: 14px 12px;
+      font-size: 14px;
       border: 1px solid var(--border-color);
       border-radius: 12px;
       outline: none;
@@ -96,10 +98,10 @@
       background: #f1f5f9;
       border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 0 14px;
+      padding: 14px 12px;
       cursor: pointer;
       font-weight: 500;
-      font-size: 13px;
+      font-size: 12px;
       color: #1a4384;
       white-space: nowrap;
       transition: all 0.2s;
@@ -207,22 +209,23 @@
 
   <div class="app-wrapper">
     <div class="app-header">
-      <h1>UPI Split Controller</h1>
+      <h1>UPI Payment Controller</h1>
     </div>
 
     <form class="form-container" id="split-form">
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
         <div class="input-row">
-          <input type="text" id="upi-id" placeholder="e.g., store@okaxis" required>
-          <button type="button" class="inline-helper-btn" id="btn-paste">📋 Paste Copied Link</button>
+          <!-- Added clean placeholder string alternative -->
+          <input type="text" id="upi-id" placeholder="name@bankhandle" required>
+          <button type="button" class="inline-helper-btn" id="btn-paste">📋 Paste Link</button>
         </div>
-        <p class="quick-info-note">Tip: You can paste a standard text string or an extracted UPI deep link (`upi://pay...`) here, and it will fill automatically.</p>
+        <p class="quick-info-note">Tip: Standard text handles or links paste here automatically.</p>
       </div>
 
       <div class="input-group">
         <label for="payee-name">Payee Name</label>
-        <input type="text" id="payee-name" placeholder="e.g., Raju Kirana Store" required>
+        <input type="text" id="payee-name" placeholder="e.g., Jim" required>
       </div>
 
       <div class="input-group">
@@ -230,7 +233,8 @@
         <input type="number" id="bill-amount" placeholder="e.g., 5000" required>
       </div>
 
-      <button type="submit" class="submit-btn">Generate Split Links & QRs</button>
+      <!-- Updated text to fit single target payment setup -->
+      <button type="submit" class="submit-btn">Generate Payment Link & QR</button>
     </form>
   </div>
 
@@ -248,7 +252,6 @@
     const resultsBox = document.getElementById('results-box');
     const linksList = document.getElementById('links-list');
 
-    // Clipboard parsing integration block
     btnPaste.addEventListener('click', async () => {
       try {
         const textFromClipboard = await navigator.clipboard.readText();
@@ -307,10 +310,26 @@
       const payeeName = nameInput.value.trim();
       const totalAmount = parseFloat(amountInput.value).toFixed(2);
 
+      // Smooth custom inline error warning instead of annoying browser alerts
       if (!upiId.includes('@')) {
-        alert('Please enter a valid UPI ID with a handle extension (e.g., name@oksbi)');
+        upiInput.style.borderColor = '#dc2626';
+        let errorNote = document.getElementById('upi-error-msg');
+        if (!errorNote) {
+          errorNote = document.createElement('p');
+          errorNote.id = 'upi-error-msg';
+          errorNote.style.color = '#dc2626';
+          errorNote.style.fontSize = '12px';
+          errorNote.style.marginTop = '4px';
+          errorNote.style.fontWeight = '500';
+          errorNote.innerText = '⚠️ Please enter a complete UPI ID containing the @ sign.';
+          upiInput.parentNode.parentNode.appendChild(errorNote);
+        }
         return;
       }
+
+      const existingError = document.getElementById('upi-error-msg');
+      if (existingError) { existingError.remove(); }
+      upiInput.style.borderColor = 'var(--border-color)';
 
       linksList.innerHTML = '';
       const upiDeepLinkUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${totalAmount}&cu=INR`;
@@ -325,30 +344,3 @@
         <div class="split-body-info">
           <div>
             <span class="split-name">Payment to ${payeeName}</span>
-            <span class="split-amt">₹${totalAmount}</span>
-          </div>
-          <div class="action-row">
-            <button type="button" class="action-btn copy-btn" onclick="navigator.clipboard.writeText('${upiDeepLinkUrl}').then(() => alert('Link copied!'))">Copy Link</button>
-            <a class="action-btn pay-btn" href="${upiDeepLinkUrl}">Pay Now</a>
-          </div>
-        </div>
-      `;
-      
-      linksList.appendChild(itemTemplate);
-
-      // Mount the QR Code
-      new QRCode(document.getElementById(dynamicQrId), {
-        text: upiDeepLinkUrl,
-        width: 80,
-        height: 80,
-        colorDark: "#1a4384",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
-      });
-
-      resultsBox.style.display = 'block';
-      resultsBox.scrollIntoView({ behavior: 'smooth' });
-    });
-  </script>
-</body>
-</html>
