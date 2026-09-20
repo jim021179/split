@@ -7,14 +7,6 @@
   
   <link href="https://googleapis.com" rel="stylesheet">
 
-  <!-- Mobile Progressive Web App Configuration -->
-  <meta name="theme-color" content="#1a4384">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  
-  <!-- Inline manifest workaround to enable smooth standalone Chrome installation -->
-  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22UPI%20Payment%20Controller%22,%22short_name%22:%22UPI%20Pay%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23f8fafc%22,%22theme_color%22:%22%231a4384%22,%22icons%22:[{%22src%22:%22data:image/svg+xml;utf8,<svg%20xmlns=%27http://w3.org><rect%20width=%27512%27%20height=%27512%27%20rx=%27128%27%20fill=%27%231a4384%27/><text%20x=%2750%%27%20y=%2765%%27%20font-size=%27240%27%20font-weight=%27bold%27%20fill=%27%23ffffff%27%20text-anchor=%27middle%27%20font-family=%27sans-serif%27>₹</text></svg>%22,%22sizes%22:%22512x512%22,%22type%22:%22image/svg+xml%22,%22purpose%22:%22any%20maskable%22}]}">
-
   <style>
     :root {
       --primary-color: #1a4384; 
@@ -78,6 +70,7 @@
       margin-bottom: 8px;
     }
 
+    /* Fixed Layout: Text input field on row 1, helper paste button on row 2 */
     .input-row-vertical {
       display: flex;
       flex-direction: column;
@@ -144,6 +137,7 @@
       line-height: 1.4;
     }
 
+    /* Output Section Layout Styles */
     .results-container {
       width: 100%;
       max-width: 440px;
@@ -211,6 +205,7 @@
     </div>
 
     <form class="form-container" id="split-form" onsubmit="event.preventDefault();">
+      
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
         <div class="input-row-vertical">
@@ -248,17 +243,7 @@
     const resultsBox = document.getElementById('results-box');
     const linksList = document.getElementById('links-list');
 
-    // Inline Service Worker setup block to satisfy PWA criteria directly
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        const swBlob = new Blob([`
-          self.addEventListener('install', (e) => self.skipWaiting());
-          self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request)));
-        `], { type: 'application/javascript' });
-        navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
-      });
-    }
-
+    // Clipboard Paste Handler
     btnPaste.addEventListener('click', async () => {
       try {
         const textFromClipboard = await navigator.clipboard.readText();
@@ -273,6 +258,7 @@
       }
     });
 
+    // Auto-parse parameters if deep links are entered manually
     upiInput.addEventListener('input', (e) => {
       const incomingValue = e.target.value.trim();
       if (incomingValue.includes('upi://pay') || incomingValue.includes('pa=')) {
@@ -309,6 +295,7 @@
       }
     }
 
+    // Auto-Tranching Form Engine
     splitForm.addEventListener('submit', (e) => {
       e.preventDefault();
       
@@ -318,9 +305,40 @@
 
       linksList.innerHTML = '';
       const maxTrancheLimit = 1999.00;
-      let installmentCounter = 1;
+      let trancheCounter = 1;
 
+      // Loop dynamically slices total balance under the target threshold
       while (remainingAmount > 0) {
         let currentTrancheAmount = remainingAmount > maxTrancheLimit ? maxTrancheLimit : remainingAmount;
         currentTrancheAmount = parseFloat(currentTrancheAmount).toFixed(2);
         
+        const upiDeepLinkUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${currentTrancheAmount}&cu=INR`;
+        
+        const itemTemplate = document.createElement('div');
+        itemTemplate.className = 'split-item';
+        
+        itemTemplate.innerHTML = `
+          <div class="split-body-info">
+            <div>
+              <span class="split-name">Part ${trancheCounter} to ${payeeName}</span>
+              <span class="split-amt">₹${currentTrancheAmount}</span>
+            </div>
+            <div class="action-row">
+              <button type="button" class="action-btn copy-btn" onclick="navigator.clipboard.writeText('${upiDeepLinkUrl}').then(() => alert('Part ${trancheCounter} link copied!'))">Copy Link</button>
+              <a class="action-btn pay-btn" href="${upiDeepLinkUrl}">Pay Now</a>
+            </div>
+          </div>
+        `;
+        
+        linksList.appendChild(itemTemplate);
+        
+        remainingAmount = (remainingAmount - currentTrancheAmount).toFixed(2);
+        trancheCounter++;
+      }
+
+      resultsBox.style.display = 'block';
+      resultsBox.scrollIntoView({ behavior: 'smooth' });
+    });
+  </script>
+</body>
+</html>
