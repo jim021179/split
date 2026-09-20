@@ -7,6 +7,14 @@
   
   <link href="https://googleapis.com" rel="stylesheet">
 
+  <!-- Mobile Progressive Web App Configuration -->
+  <meta name="theme-color" content="#1a4384">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  
+  <!-- Inline manifest workaround to enable smooth standalone Chrome installation -->
+  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22UPI%20Payment%20Controller%22,%22short_name%22:%22UPI%20Pay%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23f8fafc%22,%22theme_color%22:%22%231a4384%22,%22icons%22:[{%22src%22:%22data:image/svg+xml;utf8,<svg%20xmlns=%27http://w3.org><rect%20width=%27512%27%20height=%27512%27%20rx=%27128%27%20fill=%27%231a4384%27/><text%20x=%2750%%27%20y=%2765%%27%20font-size=%27240%27%20font-weight=%27bold%27%20fill=%27%23ffffff%27%20text-anchor=%27middle%27%20font-family=%27sans-serif%27>₹</text></svg>%22,%22sizes%22:%22512x512%22,%22type%22:%22image/svg+xml%22,%22purpose%22:%22any%20maskable%22}]}">
+
   <style>
     :root {
       --primary-color: #1a4384; 
@@ -240,6 +248,17 @@
     const resultsBox = document.getElementById('results-box');
     const linksList = document.getElementById('links-list');
 
+    // Inline Service Worker setup block to satisfy PWA criteria directly
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const swBlob = new Blob([`
+          self.addEventListener('install', (e) => self.skipWaiting());
+          self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request)));
+        `], { type: 'application/javascript' });
+        navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+      });
+    }
+
     btnPaste.addEventListener('click', async () => {
       try {
         const textFromClipboard = await navigator.clipboard.readText();
@@ -290,7 +309,6 @@
       }
     }
 
-    // Auto-Tranching Smart Splitting Engine
     splitForm.addEventListener('submit', (e) => {
       e.preventDefault();
       
@@ -302,39 +320,7 @@
       const maxTrancheLimit = 1999.00;
       let installmentCounter = 1;
 
-      // Loop breaks down bills larger than 1999 automatically
       while (remainingAmount > 0) {
-        // Determine individual installment size
         let currentTrancheAmount = remainingAmount > maxTrancheLimit ? maxTrancheLimit : remainingAmount;
         currentTrancheAmount = parseFloat(currentTrancheAmount).toFixed(2);
         
-        const upiDeepLinkUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${currentTrancheAmount}&cu=INR`;
-        
-        const itemTemplate = document.createElement('div');
-        itemTemplate.className = 'split-item';
-        
-        itemTemplate.innerHTML = `
-          <div class="split-body-info">
-            <div>
-              <span class="split-name">Part ${installmentCounter} to ${payeeName}</span>
-              <span class="split-amt">₹${currentTrancheAmount}</span>
-            </div>
-            <div class="action-row">
-              <button type="button" class="action-btn copy-btn" onclick="navigator.clipboard.writeText('${upiDeepLinkUrl}').then(() => alert('Part ${installmentCounter} link copied!'))">Copy Link</button>
-              <a class="action-btn pay-btn" href="${upiDeepLinkUrl}">Pay Now</a>
-            </div>
-          </div>
-        `;
-        
-        linksList.appendChild(itemTemplate);
-        
-        remainingAmount = (remainingAmount - currentTrancheAmount).toFixed(2);
-        installmentCounter++;
-      }
-
-      resultsBox.style.display = 'block';
-      resultsBox.scrollIntoView({ behavior: 'smooth' });
-    });
-  </script>
-</body>
-</html>
