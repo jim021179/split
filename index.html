@@ -7,7 +7,7 @@
   
   <link href="https://googleapis.com" rel="stylesheet">
   <!-- Load standard zero-dependency QR code rendering module -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cloudflare.com"></script>
 
   <style>
     :root {
@@ -135,27 +135,7 @@
       line-height: 1.4;
     }
 
-    /* Target Dynamic Participants Entry Engine Layout UI */
-    .names-container {
-      background: #f8fafc;
-      border: 1px dashed var(--border-color);
-      border-radius: 12px;
-      padding: 16px;
-      margin-top: 10px;
-    }
-    .names-container h3 {
-      font-size: 13px;
-      color: #4b5563;
-      margin-bottom: 10px;
-    }
-    .name-field-wrap {
-      margin-bottom: 8px;
-    }
-    .name-field-wrap:last-child {
-      margin-bottom: 0;
-    }
-
-    /* Output Results Layout UI Update with Side QR */
+    /* Output Results Layout UI */
     .results-container {
       width: 100%;
       max-width: 440px;
@@ -180,7 +160,6 @@
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       border-radius: 16px;
-      margin-bottom: 12px;
       align-items: center;
     }
 
@@ -199,7 +178,6 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      height: 100%;
     }
 
     .split-name { font-weight: 600; color: #333; font-size: 14px; }
@@ -252,23 +230,12 @@
         <input type="number" id="bill-amount" placeholder="e.g., 5000" required>
       </div>
 
-      <div class="input-group">
-        <label for="split-count">Number of People to Split With</label>
-        <input type="number" id="split-count" placeholder="e.g., 3" min="1" value="2" required>
-        
-        <!-- Dynamic Subform Block Context -->
-        <div class="names-container">
-          <h3>Participant Names (Optional)</h3>
-          <div id="dynamic-name-inputs"></div>
-        </div>
-      </div>
-
       <button type="submit" class="submit-btn">Generate Split Links & QRs</button>
     </form>
   </div>
 
   <div class="results-container" id="results-box">
-    <h2 class="results-title">Scannable Payment Split Targets</h2>
+    <h2 class="results-title">Scannable Payment Targets</h2>
     <div id="links-list"></div>
   </div>
 
@@ -276,27 +243,10 @@
     const upiInput = document.getElementById('upi-id');
     const nameInput = document.getElementById('payee-name');
     const amountInput = document.getElementById('bill-amount');
-    const splitInput = document.getElementById('split-count');
     const btnPaste = document.getElementById('btn-paste');
     const splitForm = document.getElementById('split-form');
     const resultsBox = document.getElementById('results-box');
     const linksList = document.getElementById('links-list');
-    const dynamicNamesBox = document.getElementById('dynamic-name-inputs');
-
-    // Generate dynamic names based on selected number count
-    function rebuildNameInputs() {
-      const currentCountValue = parseInt(splitInput.value) || 0;
-      dynamicNamesBox.innerHTML = '';
-      for (let i = 1; i <= currentCountValue; i++) {
-        const wrap = document.createElement('div');
-        wrap.className = 'name-field-wrap';
-        wrap.innerHTML = `<input type="text" class="friend-name-input" data-index="${i}" placeholder="Person ${i} Name">`;
-        dynamicNamesBox.appendChild(wrap);
-      }
-    }
-
-    splitInput.addEventListener('input', rebuildNameInputs);
-    rebuildNameInputs(); // Initial running configuration setup
 
     // Clipboard parsing integration block
     btnPaste.addEventListener('click', async () => {
@@ -349,7 +299,56 @@
       }
     }
 
-    // Form Submission Engine with Inline Canvas Node Injection
+    // Form Submission Engine
     splitForm.addEventListener('submit', (e) => {
       e.preventDefault();
       
+      const upiId = upiInput.value.trim();
+      const payeeName = nameInput.value.trim();
+      const totalAmount = parseFloat(amountInput.value).toFixed(2);
+
+      if (!upiId.includes('@')) {
+        alert('Please enter a valid UPI ID with a handle extension (e.g., name@oksbi)');
+        return;
+      }
+
+      linksList.innerHTML = '';
+      const upiDeepLinkUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${totalAmount}&cu=INR`;
+      
+      const itemTemplate = document.createElement('div');
+      itemTemplate.className = 'split-item';
+      
+      const dynamicQrId = 'qr-node-main';
+      
+      itemTemplate.innerHTML = `
+        <div class="qr-holder" id="${dynamicQrId}"></div>
+        <div class="split-body-info">
+          <div>
+            <span class="split-name">Payment to ${payeeName}</span>
+            <span class="split-amt">₹${totalAmount}</span>
+          </div>
+          <div class="action-row">
+            <button type="button" class="action-btn copy-btn" onclick="navigator.clipboard.writeText('${upiDeepLinkUrl}').then(() => alert('Link copied!'))">Copy Link</button>
+            <a class="action-btn pay-btn" href="${upiDeepLinkUrl}">Pay Now</a>
+          </div>
+        </div>
+      `;
+      
+      linksList.appendChild(itemTemplate);
+
+      // Mount the QR Code
+      new QRCode(document.getElementById(dynamicQrId), {
+        text: upiDeepLinkUrl,
+        width: 80,
+        height: 80,
+        colorDark: "#1a4384",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      resultsBox.style.display = 'block';
+      resultsBox.scrollIntoView({ behavior: 'smooth' });
+    });
+  </script>
+</body>
+</html>
