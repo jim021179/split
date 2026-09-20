@@ -6,6 +6,8 @@
   <title>UPI Split Controller</title>
   
   <link href="https://googleapis.com" rel="stylesheet">
+  <!-- Load standard zero-dependency QR code rendering module -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
     :root {
@@ -25,10 +27,10 @@
     body {
       background-color: #f8fafc;
       display: flex;
-      justify-content: center;
-      align-items: flex-start;
+      flex-direction: column;
+      align-items: center;
       min-height: 100vh;
-      padding: 20px 0;
+      padding: 20px;
     }
 
     .app-wrapper {
@@ -38,6 +40,7 @@
       border-radius: 24px;
       overflow: hidden;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+      margin-bottom: 20px;
     }
 
     .app-header {
@@ -58,7 +61,7 @@
     }
 
     .input-group {
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .input-group label {
@@ -69,7 +72,6 @@
       margin-bottom: 8px;
     }
 
-    /* Layout handling custom styled inputs */
     .input-row {
       display: flex;
       gap: 8px;
@@ -132,6 +134,95 @@
       margin-top: 6px;
       line-height: 1.4;
     }
+
+    /* Target Dynamic Participants Entry Engine Layout UI */
+    .names-container {
+      background: #f8fafc;
+      border: 1px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 10px;
+    }
+    .names-container h3 {
+      font-size: 13px;
+      color: #4b5563;
+      margin-bottom: 10px;
+    }
+    .name-field-wrap {
+      margin-bottom: 8px;
+    }
+    .name-field-wrap:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Output Results Layout UI Update with Side QR */
+    .results-container {
+      width: 100%;
+      max-width: 440px;
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+      display: none;
+    }
+
+    .results-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e4b8f;
+      margin-bottom: 16px;
+    }
+
+    .split-item {
+      display: flex;
+      gap: 12px;
+      padding: 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+
+    .qr-holder {
+      background: #ffffff;
+      padding: 6px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .split-body-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+    }
+
+    .split-name { font-weight: 600; color: #333; font-size: 14px; }
+    .split-amt { font-size: 15px; font-weight: 600; color: #1a4384; margin-top: 2px; }
+
+    .action-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .action-btn {
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      border: none;
+      text-align: center;
+    }
+
+    .copy-btn { background: #e2e8f0; color: #333; flex: 1; }
+    .pay-btn { background: #1a4384; color: #fff; text-decoration: none; flex: 1; }
   </style>
 </head>
 <body>
@@ -141,9 +232,7 @@
       <h1>UPI Split Controller</h1>
     </div>
 
-    <form class="form-container" id="split-form" onsubmit="event.preventDefault();">
-      
-      <!-- Target Field 1: UPI ID entry with instant clipboard parsing helper -->
+    <form class="form-container" id="split-form">
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
         <div class="input-row">
@@ -153,26 +242,61 @@
         <p class="quick-info-note">Tip: You can paste a standard text string or an extracted UPI deep link (`upi://pay...`) here, and it will fill automatically.</p>
       </div>
 
-      <!-- Target Field 2: Payee Name input block -->
       <div class="input-group">
         <label for="payee-name">Payee Name</label>
         <input type="text" id="payee-name" placeholder="e.g., Raju Kirana Store" required>
       </div>
 
-      <!-- Target Field 3: Total Bill Amount numeric setup config -->
       <div class="input-group">
         <label for="bill-amount">Total Bill Amount (₹)</label>
         <input type="number" id="bill-amount" placeholder="e.g., 5000" required>
       </div>
 
-      <button type="submit" class="submit-btn">Generate Split Links</button>
+      <div class="input-group">
+        <label for="split-count">Number of People to Split With</label>
+        <input type="number" id="split-count" placeholder="e.g., 3" min="1" value="2" required>
+        
+        <!-- Dynamic Subform Block Context -->
+        <div class="names-container">
+          <h3>Participant Names (Optional)</h3>
+          <div id="dynamic-name-inputs"></div>
+        </div>
+      </div>
+
+      <button type="submit" class="submit-btn">Generate Split Links & QRs</button>
     </form>
+  </div>
+
+  <div class="results-container" id="results-box">
+    <h2 class="results-title">Scannable Payment Split Targets</h2>
+    <div id="links-list"></div>
   </div>
 
   <script>
     const upiInput = document.getElementById('upi-id');
     const nameInput = document.getElementById('payee-name');
+    const amountInput = document.getElementById('bill-amount');
+    const splitInput = document.getElementById('split-count');
     const btnPaste = document.getElementById('btn-paste');
+    const splitForm = document.getElementById('split-form');
+    const resultsBox = document.getElementById('results-box');
+    const linksList = document.getElementById('links-list');
+    const dynamicNamesBox = document.getElementById('dynamic-name-inputs');
+
+    // Generate dynamic names based on selected number count
+    function rebuildNameInputs() {
+      const currentCountValue = parseInt(splitInput.value) || 0;
+      dynamicNamesBox.innerHTML = '';
+      for (let i = 1; i <= currentCountValue; i++) {
+        const wrap = document.createElement('div');
+        wrap.className = 'name-field-wrap';
+        wrap.innerHTML = `<input type="text" class="friend-name-input" data-index="${i}" placeholder="Person ${i} Name">`;
+        dynamicNamesBox.appendChild(wrap);
+      }
+    }
+
+    splitInput.addEventListener('input', rebuildNameInputs);
+    rebuildNameInputs(); // Initial running configuration setup
 
     // Clipboard parsing integration block
     btnPaste.addEventListener('click', async () => {
@@ -182,7 +306,6 @@
           processRawInputText(textFromClipboard.trim());
         }
       } catch (err) {
-        // Fallback option if clipboard system permissions are explicitly restricted
         const manualStringPrompt = prompt("Paste your copied UPI payment text or link string here:");
         if (manualStringPrompt) {
           processRawInputText(manualStringPrompt.trim());
@@ -190,7 +313,6 @@
       }
     });
 
-    // Handle manual pasting directly into the box field as well
     upiInput.addEventListener('input', (e) => {
       const incomingValue = e.target.value.trim();
       if (incomingValue.includes('upi://pay') || incomingValue.includes('pa=')) {
@@ -198,13 +320,11 @@
       }
     });
 
-    // Central text router engine
     function processRawInputText(rawText) {
       if (rawText.includes("upi://pay") || rawText.includes("pa=")) {
         try {
-          // Clean text structures if deep-link parameters are enclosed inside wider query text blocks
           let workingUrlSegment = rawText;
-          if (rawText.contains && rawText.includes("upi://pay")) {
+          if (rawText.includes("upi://pay")) {
             const startIndexPosition = rawText.indexOf("upi://pay");
             workingUrlSegment = rawText.substring(startIndexPosition);
           }
@@ -222,14 +342,14 @@
             nameInput.value = decodeURIComponent(extractedPayeeName);
           }
         } catch (error) {
-          // If formatting drops parameters, fall back safely to passing the raw value
           upiInput.value = rawText;
         }
       } else {
-        // Safe mapping configuration option
         upiInput.value = rawText;
       }
     }
-  </script>
-</body>
-</html>
+
+    // Form Submission Engine with Inline Canvas Node Injection
+    splitForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
