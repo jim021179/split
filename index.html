@@ -7,7 +7,7 @@
   
   <link href="https://googleapis.com" rel="stylesheet">
   <!-- Load standard zero-dependency QR code rendering module -->
-  <script src="https://cloudflare.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
     :root {
@@ -72,7 +72,7 @@
       margin-bottom: 8px;
     }
 
-    /* Fixed Layout: Changed to column style to put the button on the second line */
+    /* Fixed Layout Stack: Keeps everything flowing sequentially */
     .input-row-vertical {
       display: flex;
       flex-direction: column;
@@ -205,6 +205,13 @@
 
     .copy-btn { background: #e2e8f0; color: #333; flex: 1; }
     .pay-btn { background: #1a4384; color: #fff; text-decoration: none; flex: 1; }
+    
+    .error-text {
+      color: #dc2626;
+      font-size: 12px;
+      margin-top: 4px;
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
@@ -218,11 +225,10 @@
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
         <div class="input-row-vertical">
-          <!-- Text Box full width -->
           <input type="text" id="upi-id" placeholder="name@bankhandle" required>
-          <!-- Paste button on its own distinct line -->
           <button type="button" class="inline-helper-btn" id="btn-paste">📋 Paste Copied Link</button>
         </div>
+        <div id="error-container"></div>
         <p class="quick-info-note">Tip: Standard text handles or links paste here automatically.</p>
       </div>
 
@@ -253,6 +259,7 @@
     const splitForm = document.getElementById('split-form');
     const resultsBox = document.getElementById('results-box');
     const linksList = document.getElementById('links-list');
+    const errorContainer = document.getElementById('error-container');
 
     btnPaste.addEventListener('click', async () => {
       try {
@@ -304,7 +311,7 @@
       }
     }
 
-    // Form Submission Engine - Fixed crash bugs
+    // Form Submission Engine - Fixed DOM Node Error Crash
     splitForm.addEventListener('submit', (e) => {
       e.preventDefault();
       
@@ -312,25 +319,15 @@
       const payeeName = nameInput.value.trim();
       const totalAmount = parseFloat(amountInput.value).toFixed(2);
 
-      // Inline validation script
+      // Secure error text handling block via static container target
       if (!upiId.includes('@')) {
         upiInput.style.borderColor = '#dc2626';
-        let errorNote = document.getElementById('upi-error-msg');
-        if (!errorNote) {
-          errorNote = document.createElement('p');
-          errorNote.id = 'upi-error-msg';
-          errorNote.style.color = '#dc2626';
-          errorNote.style.fontSize = '12px';
-          errorNote.style.marginTop = '4px';
-          errorNote.style.fontWeight = '500';
-          errorNote.innerText = '⚠️ Please enter a complete UPI ID containing the @ sign.';
-          upiInput.parentNode.appendChild(errorNote);
-        }
+        errorContainer.innerHTML = '<p class="error-text">⚠️ Please enter a complete UPI ID containing the @ sign.</p>';
         return;
       }
 
-      const existingError = document.getElementById('upi-error-msg');
-      if (existingError) { existingError.remove(); }
+      // Reset values if valid
+      errorContainer.innerHTML = '';
       upiInput.style.borderColor = 'var(--border-color)';
 
       linksList.innerHTML = '';
@@ -347,3 +344,6 @@
           <div>
             <span class="split-name">Payment to ${payeeName}</span>
             <span class="split-amt">₹${totalAmount}</span>
+          </div>
+          <div class="action-row">
+            <button type="button" class="action-btn copy-btn" onclick="navigator.clipboard.writeText('${upiDeepLinkUrl}').then(() => alert('Link copied!'))">Copy Link</button>
