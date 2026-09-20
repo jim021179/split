@@ -70,9 +70,12 @@
       margin-bottom: 8px;
     }
 
-    .input-row {
+    /* Fixed Layout Stack: keeps input box large and paste button cleanly on line 2 */
+    .input-row-vertical {
       display: flex;
-      gap: 8px;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
     }
 
     input[type="text"], input[type="number"] {
@@ -94,12 +97,13 @@
       background: #f1f5f9;
       border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 0 14px;
+      padding: 12px;
       cursor: pointer;
-      font-weight: 500;
+      font-weight: 600;
       font-size: 13px;
       color: #1a4384;
-      white-space: nowrap;
+      text-align: center;
+      width: 100%;
       transition: all 0.2s;
     }
 
@@ -133,7 +137,7 @@
       line-height: 1.4;
     }
 
-    /* Output Results UI Area */
+    /* Output Results Target Area */
     .results-container {
       width: 100%;
       max-width: 440px;
@@ -153,35 +157,16 @@
 
     .split-item {
       display: flex;
-      gap: 12px;
+      justify-content: space-between;
+      align-items: center;
       padding: 14px;
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       border-radius: 16px;
-      align-items: center;
-    }
-
-    .qr-holder {
-      background: #ffffff;
-      padding: 6px;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .qr-holder img {
-      width: 100px;
-      height: 100px;
-      display: block;
     }
 
     .split-body-info {
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
     }
 
     .split-name { font-weight: 600; color: #333; font-size: 14px; }
@@ -214,11 +199,11 @@
       <h1>UPI Payment Controller</h1>
     </div>
 
-    <form class="form-container" id="split-form">
+    <form class="form-container" id="split-form" onsubmit="event.preventDefault();">
       
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
-        <div class="input-row">
+        <div class="input-row-vertical">
           <input type="text" id="upi-id" placeholder="e.g., store@okaxis" required>
           <button type="button" class="inline-helper-btn" id="btn-paste">📋 Paste Copied Link</button>
         </div>
@@ -235,12 +220,12 @@
         <input type="number" id="bill-amount" placeholder="e.g., 5000" required>
       </div>
 
-      <button type="submit" class="submit-btn">Generate Payment Link & QR</button>
+      <button type="submit" class="submit-btn" id="btn-submit">Generate Payment Link</button>
     </form>
   </div>
 
   <div class="results-container" id="results-box">
-    <h2 class="results-title">Scannable Payment Target</h2>
+    <h2 class="results-title">Payment Target</h2>
     <div id="links-list"></div>
   </div>
 
@@ -253,6 +238,7 @@
     const resultsBox = document.getElementById('results-box');
     const linksList = document.getElementById('links-list');
 
+    // Original clipboard engine from yesterday
     btnPaste.addEventListener('click', async () => {
       try {
         const textFromClipboard = await navigator.clipboard.readText();
@@ -303,6 +289,7 @@
       }
     }
 
+    // Original form processing logic that worked smoothly yesterday
     splitForm.addEventListener('submit', (e) => {
       e.preventDefault();
       
@@ -313,16 +300,10 @@
       linksList.innerHTML = '';
       const upiDeepLinkUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${totalAmount}&cu=INR`;
       
-      // Native, completely zero-dependency QR Image generator lookup string format
-      const visualQrApiUrl = `https://qrserver.com{encodeURIComponent(upiDeepLinkUrl)}`;
-      
       const itemTemplate = document.createElement('div');
       itemTemplate.className = 'split-item';
       
       itemTemplate.innerHTML = `
-        <div class="qr-holder">
-          <img src="${visualQrApiUrl}" alt="Scan to Pay">
-        </div>
         <div class="split-body-info">
           <div>
             <span class="split-name">Payment to ${payeeName}</span>
