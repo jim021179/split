@@ -70,7 +70,6 @@
       margin-bottom: 8px;
     }
 
-    /* Fixed Layout Stack: keeps input box large and paste button cleanly on line 2 */
     .input-row-vertical {
       display: flex;
       flex-direction: column;
@@ -137,7 +136,6 @@
       line-height: 1.4;
     }
 
-    /* Output Results Target Area */
     .results-container {
       width: 100%;
       max-width: 440px;
@@ -163,6 +161,11 @@
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       border-radius: 16px;
+      margin-bottom: 12px;
+    }
+    
+    .split-item:last-child {
+      margin-bottom: 0;
     }
 
     .split-body-info {
@@ -200,7 +203,6 @@
     </div>
 
     <form class="form-container" id="split-form" onsubmit="event.preventDefault();">
-      
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
         <div class="input-row-vertical">
@@ -220,12 +222,12 @@
         <input type="number" id="bill-amount" placeholder="e.g., 5000" required>
       </div>
 
-      <button type="submit" class="submit-btn" id="btn-submit">Generate Payment Link</button>
+      <button type="submit" class="submit-btn" id="btn-submit">Generate Payment Links</button>
     </form>
   </div>
 
   <div class="results-container" id="results-box">
-    <h2 class="results-title">Payment Target</h2>
+    <h2 class="results-title">Payment Targets (Max ₹1,999 per Link)</h2>
     <div id="links-list"></div>
   </div>
 
@@ -238,7 +240,6 @@
     const resultsBox = document.getElementById('results-box');
     const linksList = document.getElementById('links-list');
 
-    // Original clipboard engine from yesterday
     btnPaste.addEventListener('click', async () => {
       try {
         const textFromClipboard = await navigator.clipboard.readText();
@@ -289,34 +290,48 @@
       }
     }
 
-    // Original form processing logic that worked smoothly yesterday
+    // Auto-Tranching Smart Splitting Engine
     splitForm.addEventListener('submit', (e) => {
       e.preventDefault();
       
       const upiId = upiInput.value.trim();
       const payeeName = nameInput.value.trim();
-      const totalAmount = parseFloat(amountInput.value).toFixed(2);
+      let remainingAmount = parseFloat(amountInput.value);
 
       linksList.innerHTML = '';
-      const upiDeepLinkUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${totalAmount}&cu=INR`;
-      
-      const itemTemplate = document.createElement('div');
-      itemTemplate.className = 'split-item';
-      
-      itemTemplate.innerHTML = `
-        <div class="split-body-info">
-          <div>
-            <span class="split-name">Payment to ${payeeName}</span>
-            <span class="split-amt">₹${totalAmount}</span>
+      const maxTrancheLimit = 1999.00;
+      let installmentCounter = 1;
+
+      // Loop breaks down bills larger than 1999 automatically
+      while (remainingAmount > 0) {
+        // Determine individual installment size
+        let currentTrancheAmount = remainingAmount > maxTrancheLimit ? maxTrancheLimit : remainingAmount;
+        currentTrancheAmount = parseFloat(currentTrancheAmount).toFixed(2);
+        
+        const upiDeepLinkUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${currentTrancheAmount}&cu=INR`;
+        
+        const itemTemplate = document.createElement('div');
+        itemTemplate.className = 'split-item';
+        
+        itemTemplate.innerHTML = `
+          <div class="split-body-info">
+            <div>
+              <span class="split-name">Part ${installmentCounter} to ${payeeName}</span>
+              <span class="split-amt">₹${currentTrancheAmount}</span>
+            </div>
+            <div class="action-row">
+              <button type="button" class="action-btn copy-btn" onclick="navigator.clipboard.writeText('${upiDeepLinkUrl}').then(() => alert('Part ${installmentCounter} link copied!'))">Copy Link</button>
+              <a class="action-btn pay-btn" href="${upiDeepLinkUrl}">Pay Now</a>
+            </div>
           </div>
-          <div class="action-row">
-            <button type="button" class="action-btn copy-btn" onclick="navigator.clipboard.writeText('${upiDeepLinkUrl}').then(() => alert('Link copied!'))">Copy Link</button>
-            <a class="action-btn pay-btn" href="${upiDeepLinkUrl}">Pay Now</a>
-          </div>
-        </div>
-      `;
-      
-      linksList.appendChild(itemTemplate);
+        `;
+        
+        linksList.appendChild(itemTemplate);
+        
+        remainingAmount = (remainingAmount - currentTrancheAmount).toFixed(2);
+        installmentCounter++;
+      }
+
       resultsBox.style.display = 'block';
       resultsBox.scrollIntoView({ behavior: 'smooth' });
     });
