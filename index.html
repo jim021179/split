@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UPI Split Controller</title>
+  <title>UPI Payment Controller</title>
   
   <link href="https://googleapis.com" rel="stylesheet">
   <!-- Load standard zero-dependency QR code rendering module -->
@@ -72,17 +72,18 @@
       margin-bottom: 8px;
     }
 
-    .input-row {
+    /* Fixed Layout: Changed to column style to put the button on the second line */
+    .input-row-vertical {
       display: flex;
-      gap: 8px;
-      align-items: center;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
     }
 
-    /* Small Screen Optimization: Slightly compressed fonts & padding so long texts don't hide */
     input[type="text"], input[type="number"] {
       width: 100%;
-      padding: 14px 12px;
-      font-size: 14px;
+      padding: 14px 16px;
+      font-size: 15px;
       border: 1px solid var(--border-color);
       border-radius: 12px;
       outline: none;
@@ -98,12 +99,13 @@
       background: #f1f5f9;
       border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 14px 12px;
+      padding: 12px;
       cursor: pointer;
-      font-weight: 500;
-      font-size: 12px;
+      font-weight: 600;
+      font-size: 13px;
       color: #1a4384;
-      white-space: nowrap;
+      text-align: center;
+      width: 100%;
       transition: all 0.2s;
     }
 
@@ -215,10 +217,11 @@
     <form class="form-container" id="split-form">
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
-        <div class="input-row">
-          <!-- Added clean placeholder string alternative -->
+        <div class="input-row-vertical">
+          <!-- Text Box full width -->
           <input type="text" id="upi-id" placeholder="name@bankhandle" required>
-          <button type="button" class="inline-helper-btn" id="btn-paste">📋 Paste Link</button>
+          <!-- Paste button on its own distinct line -->
+          <button type="button" class="inline-helper-btn" id="btn-paste">📋 Paste Copied Link</button>
         </div>
         <p class="quick-info-note">Tip: Standard text handles or links paste here automatically.</p>
       </div>
@@ -233,7 +236,6 @@
         <input type="number" id="bill-amount" placeholder="e.g., 5000" required>
       </div>
 
-      <!-- Updated text to fit single target payment setup -->
       <button type="submit" class="submit-btn">Generate Payment Link & QR</button>
     </form>
   </div>
@@ -302,7 +304,7 @@
       }
     }
 
-    // Form Submission Engine
+    // Form Submission Engine - Fixed crash bugs
     splitForm.addEventListener('submit', (e) => {
       e.preventDefault();
       
@@ -310,7 +312,7 @@
       const payeeName = nameInput.value.trim();
       const totalAmount = parseFloat(amountInput.value).toFixed(2);
 
-      // Smooth custom inline error warning instead of annoying browser alerts
+      // Inline validation script
       if (!upiId.includes('@')) {
         upiInput.style.borderColor = '#dc2626';
         let errorNote = document.getElementById('upi-error-msg');
@@ -322,7 +324,7 @@
           errorNote.style.marginTop = '4px';
           errorNote.style.fontWeight = '500';
           errorNote.innerText = '⚠️ Please enter a complete UPI ID containing the @ sign.';
-          upiInput.parentNode.parentNode.appendChild(errorNote);
+          upiInput.parentNode.appendChild(errorNote);
         }
         return;
       }
@@ -344,3 +346,4 @@
         <div class="split-body-info">
           <div>
             <span class="split-name">Payment to ${payeeName}</span>
+            <span class="split-amt">₹${totalAmount}</span>
