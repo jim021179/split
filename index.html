@@ -6,8 +6,6 @@
   <title>UPI Payment Controller</title>
   
   <link href="https://googleapis.com" rel="stylesheet">
-  <!-- Load standard zero-dependency QR code rendering module -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
     :root {
@@ -61,7 +59,7 @@
     }
 
     .input-group {
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     .input-group label {
@@ -72,18 +70,15 @@
       margin-bottom: 8px;
     }
 
-    /* Fixed Layout Stack: Keeps everything flowing sequentially */
-    .input-row-vertical {
+    .input-row {
       display: flex;
-      flex-direction: column;
-      gap: 10px;
-      width: 100%;
+      gap: 8px;
     }
 
     input[type="text"], input[type="number"] {
       width: 100%;
       padding: 14px 16px;
-      font-size: 15px;
+      font-size: 16px;
       border: 1px solid var(--border-color);
       border-radius: 12px;
       outline: none;
@@ -99,13 +94,12 @@
       background: #f1f5f9;
       border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 12px;
+      padding: 0 14px;
       cursor: pointer;
-      font-weight: 600;
+      font-weight: 500;
       font-size: 13px;
       color: #1a4384;
-      text-align: center;
-      width: 100%;
+      white-space: nowrap;
       transition: all 0.2s;
     }
 
@@ -139,7 +133,7 @@
       line-height: 1.4;
     }
 
-    /* Output Results Layout UI */
+    /* Output Results UI Area */
     .results-container {
       width: 100%;
       max-width: 440px;
@@ -177,6 +171,12 @@
       justify-content: center;
     }
 
+    .qr-holder img {
+      width: 100px;
+      height: 100px;
+      display: block;
+    }
+
     .split-body-info {
       flex: 1;
       display: flex;
@@ -205,13 +205,6 @@
 
     .copy-btn { background: #e2e8f0; color: #333; flex: 1; }
     .pay-btn { background: #1a4384; color: #fff; text-decoration: none; flex: 1; }
-    
-    .error-text {
-      color: #dc2626;
-      font-size: 12px;
-      margin-top: 4px;
-      font-weight: 500;
-    }
   </style>
 </head>
 <body>
@@ -222,19 +215,19 @@
     </div>
 
     <form class="form-container" id="split-form">
+      
       <div class="input-group">
         <label for="upi-id">Destination UPI ID</label>
-        <div class="input-row-vertical">
-          <input type="text" id="upi-id" placeholder="name@bankhandle" required>
+        <div class="input-row">
+          <input type="text" id="upi-id" placeholder="e.g., store@okaxis" required>
           <button type="button" class="inline-helper-btn" id="btn-paste">📋 Paste Copied Link</button>
         </div>
-        <div id="error-container"></div>
-        <p class="quick-info-note">Tip: Standard text handles or links paste here automatically.</p>
+        <p class="quick-info-note">Tip: You can paste a standard text handle or an extracted UPI deep link here.</p>
       </div>
 
       <div class="input-group">
         <label for="payee-name">Payee Name</label>
-        <input type="text" id="payee-name" placeholder="e.g., Jim" required>
+        <input type="text" id="payee-name" placeholder="e.g., Raju Kirana Store" required>
       </div>
 
       <div class="input-group">
@@ -247,7 +240,7 @@
   </div>
 
   <div class="results-container" id="results-box">
-    <h2 class="results-title">Scannable Payment Targets</h2>
+    <h2 class="results-title">Scannable Payment Target</h2>
     <div id="links-list"></div>
   </div>
 
@@ -259,7 +252,6 @@
     const splitForm = document.getElementById('split-form');
     const resultsBox = document.getElementById('results-box');
     const linksList = document.getElementById('links-list');
-    const errorContainer = document.getElementById('error-container');
 
     btnPaste.addEventListener('click', async () => {
       try {
@@ -311,7 +303,6 @@
       }
     }
 
-    // Form Submission Engine - Fixed DOM Node Error Crash
     splitForm.addEventListener('submit', (e) => {
       e.preventDefault();
       
@@ -319,27 +310,19 @@
       const payeeName = nameInput.value.trim();
       const totalAmount = parseFloat(amountInput.value).toFixed(2);
 
-      // Secure error text handling block via static container target
-      if (!upiId.includes('@')) {
-        upiInput.style.borderColor = '#dc2626';
-        errorContainer.innerHTML = '<p class="error-text">⚠️ Please enter a complete UPI ID containing the @ sign.</p>';
-        return;
-      }
-
-      // Reset values if valid
-      errorContainer.innerHTML = '';
-      upiInput.style.borderColor = 'var(--border-color)';
-
       linksList.innerHTML = '';
       const upiDeepLinkUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${totalAmount}&cu=INR`;
+      
+      // Native, completely zero-dependency QR Image generator lookup string format
+      const visualQrApiUrl = `https://qrserver.com{encodeURIComponent(upiDeepLinkUrl)}`;
       
       const itemTemplate = document.createElement('div');
       itemTemplate.className = 'split-item';
       
-      const dynamicQrId = 'qr-node-main';
-      
       itemTemplate.innerHTML = `
-        <div class="qr-holder" id="${dynamicQrId}"></div>
+        <div class="qr-holder">
+          <img src="${visualQrApiUrl}" alt="Scan to Pay">
+        </div>
         <div class="split-body-info">
           <div>
             <span class="split-name">Payment to ${payeeName}</span>
@@ -347,3 +330,15 @@
           </div>
           <div class="action-row">
             <button type="button" class="action-btn copy-btn" onclick="navigator.clipboard.writeText('${upiDeepLinkUrl}').then(() => alert('Link copied!'))">Copy Link</button>
+            <a class="action-btn pay-btn" href="${upiDeepLinkUrl}">Pay Now</a>
+          </div>
+        </div>
+      `;
+      
+      linksList.appendChild(itemTemplate);
+      resultsBox.style.display = 'block';
+      resultsBox.scrollIntoView({ behavior: 'smooth' });
+    });
+  </script>
+</body>
+</html>
